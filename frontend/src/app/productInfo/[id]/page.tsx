@@ -14,6 +14,7 @@ import { useCart } from "@/app/context/cartContext";
 import { useRouter } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import loadingImage from "/public/images/bannervals.jpg"; 
+import CheckoutButton from "@/components/CheckoutButton";
 export default function ProductInfoPage() {
   type Product = {
     id: string;
@@ -144,6 +145,7 @@ export default function ProductInfoPage() {
   };
 
   const handleAddToCart2 = () => {
+    console.log("entre y soy la el producto actual", product)
     if (!product) return;
 
 
@@ -174,6 +176,9 @@ export default function ProductInfoPage() {
   const botonComprarAhora = () => {
     handleAddToCart2();
     setIsProcessingCheckout(true);
+  }
+  const botonComprarAhoraPorMercadoPago = () => {
+    handleAddToCart2();
   }
   return (
     <>
@@ -240,10 +245,13 @@ export default function ProductInfoPage() {
             </div>
 
 
-            <div className="mt-4 flex gap-4">
+            <div className="mt-4 flex gap-4 justify-center">
               <button className="bg-primary text-white  rounded-2xl text-lg hover:bg-secondary transition w-[320px] h-[40px]" onClick={botonComprarAhora}>
                 Comprar ahora
               </button>
+            </div>
+            <div onClick={botonComprarAhoraPorMercadoPago}className="mt-4 flex gap-4 justify-center">
+              <CheckoutButton />
             </div>
           </div>
         </div>

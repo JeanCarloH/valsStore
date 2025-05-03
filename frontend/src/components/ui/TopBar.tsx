@@ -124,11 +124,11 @@ export default function TopBar() {
             </NavigationMenuList>
           </NavigationMenu>
         </div>
-        <div className="w-[1px] h-[60px]  border-r-2 border-black hidden md:flex"></div>
-        {/* Botón de Cambio de Tema */}
+        <div className="w-[1px] h-[60px]  border-r-2 border-black hidden md:flex mr-4"></div>
+        {/* Botón de Cambio de Tema
         <div className="hidden md:flex items-center px-4 cursor-pointer" onClick={toggleTheme}>
           {isDark ? <Sun size={26} className="text-yellow-400 transition-all duration-300 hover:scale-110" /> : <Moon size={26} className="text-gray-800 transition-all duration-300 hover:scale-110" />}
-        </div>
+        </div> */}
         <div>
           {user ? (
             <Button onClick={logout} className="hidden md:block rounded-xl">

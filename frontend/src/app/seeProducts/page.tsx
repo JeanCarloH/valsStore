@@ -5,6 +5,9 @@ import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../../firebase";
 import Image from "next/image";
 import loadingImage from "/public/images/bannervals.jpg"; 
+import { deleteObject, ref } from "firebase/storage";
+import { storage } from "../../../firebase";
+import Swal from "sweetalert2";  // Asegúrate de tener esta importación
 export default function VerProductos() {
   interface Product {
     id: string;
@@ -37,16 +40,55 @@ export default function VerProductos() {
     }
   };
 
-  const deleteProduct = async (id: string) => {
-    if (!window.confirm("¿Seguro que quieres eliminar este producto?")) return;
 
-    try {
-      await deleteDoc(doc(db, "products", id));
-      setProducts(products.filter((product) => product.id !== id));
-    } catch (error) {
-      console.error("Error al eliminar producto:", error);
-    }
-  };
+
+const deleteProduct = async (product: Product) => {
+  // Mostrar el popup de confirmación usando SweetAlert2
+  const result = await Swal.fire({
+    title: `¿Seguro que quieres eliminar ${product.name}?`, // Usamos el nombre del producto
+    text: "¡Esta acción no se puede deshacer!",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+  });
+
+  // Si el usuario no confirma la acción, salimos de la función
+  if (!result.isConfirmed) return;
+
+  try {
+    // Eliminar imágenes del Storage
+    const deleteImagePromises = product.images.map(async (imageUrl) => {
+      const storageRef = ref(storage, imageUrl);
+      await deleteObject(storageRef);
+    });
+
+    // Esperar a que todas las imágenes se eliminen
+    await Promise.all(deleteImagePromises);
+
+    // Luego eliminar el producto de Firestore
+    await deleteDoc(doc(db, "products", product.id));
+
+    // Actualizar estado para reflejar cambios en UI
+    setProducts((prev) => prev.filter((p) => p.id !== product.id));
+
+    // Mostrar un mensaje de éxito
+    Swal.fire({
+      icon: "success",
+      title: "Producto eliminado",
+      text: `${product.name} ha sido eliminado correctamente.`,
+    });
+  } catch (error) {
+    console.error("Error al eliminar producto o imágenes:", error);
+    Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "Hubo un problema al eliminar el producto.",
+    });
+  }
+};
 
   return (
     <div className="max-w-4xl mx-auto mt-20 p-4">
@@ -85,7 +127,7 @@ export default function VerProductos() {
                   <td className="border p-2">${product.price}</td>
                   <td className="border p-2">
                     <button
-                      onClick={() => deleteProduct(product.id)}
+                      onClick={() => deleteProduct(product)}
                       className="bg-red-500 text-white px-2 py-1 rounded hover:bg-red-700 transition"
                     >
                       ❌ Eliminar

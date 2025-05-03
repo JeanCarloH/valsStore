@@ -22,14 +22,6 @@ export default function ProductGrid() {
     images: string[]; // Ahora es un array de strings (Base64)
     sizes: string | any; // Añadir la propiedad sizes
   };
-  const [product, setProduct] = useState<{
-    id: string;
-    name: string;
-    price: number;
-    description: string;
-    images: string[];
-    sizes: string[];
-  } | null>(null);
 
   //const [cart, setCart] = useState<Product[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -56,22 +48,7 @@ export default function ProductGrid() {
   }, []);
   
 
-  
-  // Agregar producto al carrito
-  const handleAddToCart = (product: Product) => {
-    console.log("CANTIDAD DE PRODUCTO", cart)
-    if (product) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        sizes: product.sizes,
-        image: product.images[0],
-        quantity: 1,
-      });
-    }
-    setIsCartOpen(true);
-  };
+
   // Calcular el total del carrito
   const getTotal = () => {
     return cart.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2);

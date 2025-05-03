@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../../../firebase";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
+import Swal from "sweetalert2"; // Importamos SweetAlert2
 export default function AddProductPage() {
   const [product, setProduct] = useState({
     name: "",
@@ -11,7 +13,7 @@ export default function AddProductPage() {
     description: "",
     category: "",
     gender: "",
-    images: [] as File[], // Lista de imágenes en archivos
+    images: [] as string[], // Lista de imágenes en archivos
     sizes: [] as string[], // Lista de tallas disponibles
   });
 
@@ -22,20 +24,45 @@ export default function AddProductPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setProduct({ ...product, [e.target.name]: e.target.value });
   };
+  const storage = getStorage();
 
   // Manejar selección de imágenes
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
-
+  
     const selectedFiles = Array.from(e.target.files);
-
-    setProduct((prev) => ({
-      ...prev,
-      images: [...prev.images, ...selectedFiles], // Solo archivos File[]
-    }));
-
-    const newPreviewImages = selectedFiles.map((file) => URL.createObjectURL(file));
-    setPreviewImages((prev) => [...prev, ...newPreviewImages]); // Solo URLs (string[])
+    setLoading(true);
+  
+    try {
+      const uploadedImageUrls = await Promise.all(
+        selectedFiles.map(async (file) => {
+          // Verificar si la imagen no supera 1MB
+          if (file.size > 1024 * 1024) {
+            Swal.fire("Error", "La imagen no debe superar 1MB", "error");
+            return null;
+          }
+  
+          const storageRef = ref(storage, `productos/${Date.now()}_${file.name}`);
+          await uploadBytes(storageRef, file);
+          return await getDownloadURL(storageRef);
+        })
+      );
+  
+      // Filtrar URLs no válidas (caso de imágenes rechazadas por tamaño)
+      const validUrls = uploadedImageUrls.filter((url) => url !== null) as string[];
+  
+      setProduct((prev) => ({
+        ...prev,
+        images: [...prev.images, ...validUrls], // Guardamos las URLs en lugar de archivos
+      }));
+  
+      setPreviewImages((prev) => [...prev, ...validUrls]); // Previsualización
+    } catch (error) {
+      console.error("Error al subir imágenes:", error);
+      Swal.fire("Error", "No se pudieron subir las imágenes", "error");
+    }
+  
+    setLoading(false);
   };
 
   // Eliminar una imagen de la lista
@@ -74,37 +101,36 @@ export default function AddProductPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
+  
     try {
-      // 🔹 1. Convertir imágenes a Base64
-      const base64Images = await Promise.all(product.images.map(file => convertFileToBase64(file)));
-
-      // 🔹 2. Crear objeto sin archivos File, solo Base64
       const newProduct = {
         name: product.name,
         price: parseFloat(product.price),
         description: product.description,
         category: product.category,
         gender: product.gender,
-        images: base64Images, // 🔥 Guardar en Firestore como Base64
+        images: product.images, // Ahora ya son URLs, no base64
         sizes: product.sizes,
       };
-
-      // 🔹 3. Guardar en Firestore
+  
       const docRef = await addDoc(collection(db, "products"), newProduct);
-      console.log("Producto agregado con éxito, ID:", docRef.id);
-      alert(`Producto agregado con éxito! ID: ${docRef.id}`);
-
-      // 🔹 4. Limpiar el formulario
+  
+      Swal.fire({
+        icon: "success",
+        title: "Producto agregado",
+        text: `El producto ha sido agregado con éxito! ID: ${docRef.id}`,
+      });
+  
       setProduct({ name: "", price: "", description: "", category: "", gender: "", images: [], sizes: [] });
       setPreviewImages([]);
     } catch (error) {
       console.error("Error al guardar el producto:", error);
-      alert("Error al agregar el producto.");
+      Swal.fire("Error", "Hubo un problema al agregar el producto.", "error");
     }
-
+  
     setLoading(false);
   };
+  
 
 
 
@@ -189,6 +215,7 @@ export default function AddProductPage() {
             onChange={handleImageChange}
             className="w-full p-2 border rounded-md"
           />
+             <p className="text-sm text-gray-500 mt-1">Máximo 1MB por imagen</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {previewImages.map((src, index) => (
               <div key={index} className="relative">
